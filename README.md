@@ -38,7 +38,11 @@ fintech-review-analytics/
 │   └── README.md
 ├── scripts/
 │   ├── scrape_reviews.py             # Task 1: scraping
-│   └── preprocess.py                 # Task 1: preprocessing
+│   ├── preprocess.py                 # Task 1: preprocessing
+│   ├── analyse_sentiment_themes.py   # Task 2: sentiment + themes
+│   └── load_to_postgres.py           # Task 3: PostgreSQL loader
+├── sql/
+│   └── schema.sql                    # Task 3: relational schema + verification queries
 ├── src/                              # Reusable modules (Tasks 2–4)
 └── tests/
     └── test_preprocess.py            # Unit tests for preprocessing pipeline
@@ -71,6 +75,9 @@ python scripts/preprocess.py
 
 # 6. Run unit tests
 pytest tests/ -v
+
+# 7. Load to PostgreSQL (Task 3)
+python scripts/load_to_postgres.py
 ```
 
 ---
@@ -135,6 +142,69 @@ GitHub Actions workflow (`.github/workflows/unittests.yml`) runs on every push t
 3. Cache pip dependencies
 4. `pip install -r requirements.txt`
 5. `pytest tests/ -v --tb=short --cov=src`
+
+---
+
+## Task 3: Store Cleaned Data in PostgreSQL
+
+### 1) Install and Create Database
+
+Install PostgreSQL locally, then create the target database:
+
+```sql
+CREATE DATABASE bank_reviews;
+```
+
+### 2) Configure Connection
+
+The loader reads standard PostgreSQL environment variables:
+
+- `PGHOST` (default: `localhost`)
+- `PGPORT` (default: `5432`)
+- `PGDATABASE` (default: `bank_reviews`)
+- `PGUSER` (default: `postgres`)
+- `PGPASSWORD` (default: `postgres`)
+
+Example (Windows PowerShell):
+
+```powershell
+$env:PGHOST="localhost"
+$env:PGPORT="5432"
+$env:PGDATABASE="bank_reviews"
+$env:PGUSER="postgres"
+$env:PGPASSWORD="your_password"
+```
+
+### 3) Apply Schema + Insert Data
+
+Run the Task 3 loader:
+
+```bash
+python scripts/load_to_postgres.py
+```
+
+The script will:
+
+1. Read `data/raw/reviews_analysed.csv` (or fallback to `data/raw/reviews_clean.csv`)
+2. Apply SQL schema from `sql/schema.sql`
+3. Upsert banks into `banks`
+4. Insert/update reviews into `reviews`
+5. Run verification queries and print results
+
+### 4) Verification Queries
+
+Verification SQL is included in `sql/schema.sql` comments:
+
+1. Count reviews per bank
+2. Compute average rating per bank
+3. Check nulls in key fields (`review_text`, `rating`, `review_date`, `source`)
+
+### KPI Coverage
+
+- Working DB connection + insert script: Implemented in `scripts/load_to_postgres.py`
+- Schema file committed: `sql/schema.sql`
+- Data volume requirement (>1,000) is satisfied when Task 1/2 datasets are loaded
+- Verification queries executed by the loader after insertion
 
 ---
 
